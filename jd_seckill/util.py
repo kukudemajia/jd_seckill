@@ -275,8 +275,8 @@ email = Email(
 )
 
 qywx = Qiyeweichat(
-    qywx_corpid=global_config.getRaw('messenger', 'qywx_corpid'),
-    qywx_agentId=global_config.getRaw('messenger', 'qywx_agentId'),
-    qywx_secret=global_config.getRaw('messenger', 'qywx_secret'),
-    qywx_touser=global_config.getRaw('messenger', 'qywx_touser')
+    corpid=global_config.getRaw('messenger', 'qywx_corpid'),
+    agentId=global_config.getRaw('messenger', 'qywx_agentId'),
+    secret=global_config.getRaw('messenger', 'qywx_secret'),
+    touser=global_config.getRaw('messenger', 'qywx_touser')
 )
