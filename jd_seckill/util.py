@@ -7,6 +7,9 @@ import requests
 import os
 import time
 import smtplib
+import logging
+import datetime
+
 
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -200,8 +203,80 @@ class Email():
             logger.info('邮箱未登录')
 
 
+"""
+message_content
+{"title":"Homeassistant","message":"text|内容"}
+{"title":"Homeassistant","message":"news|内容|打开链接|图片链接"}
+{"title":"Homeassistant","message":"textcard|内容|打开链接"}
+{"title":"Homeassistant","message":"video|内容|mp4本地地址"}
+"""
+class Qiyeweichat():
+
+    def __init__(self, corpid, agentId, secret, touser):
+        if global_config.getRaw('messenger', 'qywx_enable') == 'false':
+            return
+        self.CORPID = corpid
+        self.CORPSECRET = secret
+        self.AGENTID = agentId
+        self.TOUSER = touser
+
+    def _get_access_token(self):
+        url = 'https://qyapi.weixin.qq.com/cgi-bin/gettoken'
+        values = {'corpid': self.CORPID,
+                  'corpsecret': self.CORPSECRET,
+                  }
+        req = requests.post(url, params=values)
+        data = json.loads(req.text)
+        return data["access_token"]
+
+    def get_access_token(self):
+        access_token = self._get_access_token()
+        return access_token
+
+    def send_message(self, message_content):
+        send_url = 'https://qyapi.weixin.qq.com/cgi-bin/message/send?access_token=' + self.get_access_token()
+        title = message_content["title"]
+        message = message_content["message"]
+        if title:
+           timestp = datetime.datetime.now()
+           sendtime = '{} {}'.format(timestp.strftime('%Y{y}%m{m}%d{d}').format(y='年', m='月', d='日'), timestp.strftime("%H:%M:%S"))
+
+           msgtype = message.split('|')[0]
+           if msgtype == 'text' :
+             message = '"content":' + '"' + title + '\r\n' + '--------------------------------------------' + '\r\n' + message.split('|')[1] + '\r\n' + '--------------------------------------------' + '\r\n' + sendtime + '"'
+           elif  msgtype == 'textcard' :
+             message = '"title":' + '"' + title + '"' + ',' + '"description":' + '"' + message.split('|')[1] + '\r\n' + sendtime + '"' + ',' + '"url":' + '"' + message.split('|')[2] + '"'
+           elif  msgtype == 'news' :
+             message ='"articles":[{' + '"title":' + '"' + title + '"' + ',' + '"description":' + '"' + message.split('|')[1] + '\r\n' + sendtime + '"' + ',' + '"url":' + '"' + message.split('|')[2] + '"' + ',' + '"picurl":' + '"' + message.split('|')[3] + '"' + '}]'
+           elif  msgtype == 'video' :
+               path = message.split('|')[2]
+               curl = 'https://qyapi.weixin.qq.com/cgi-bin/media/upload?access_token=' + self.get_access_token() + '&type=video'
+               files = {'video': open(path, 'rb')}
+               r = requests.post(curl, files=files)
+               re = json.loads(r.text)
+               ree = re['media_id']
+               media_id = str(ree)
+               message = '"media_id":' + '"' + media_id + '"' + ',' + '"title":' + '"' + title + '"' + ',' + '"description":' + '"' + message.split('|')[1] + '\r\n' + sendtime + '"'
+           else:
+             msgtype = 'text'
+             message = '"content":' + '"' + message.split('|')[1] + '"'
+           send_data = '{"msgtype": "%s", "safe": "0", "agentid": %s, "touser": "%s", "%s": {%s}}' % (
+               msgtype, self.AGENTID, self.TOUSER, msgtype, message)
+           send_data8 = send_data.encode('utf-8')
+           response = requests.post(send_url,send_data8)
+        else:
+           _LOGGER.error("Title can NOT be null")
+
+
 email = Email(
     mail_host=global_config.getRaw('messenger', 'email_host'),
     mail_user=global_config.getRaw('messenger', 'email_user'),
-    mail_pwd=global_config.getRaw('messenger', 'email_pwd'),
+    mail_pwd=global_config.getRaw('messenger', 'email_pwd')
+)
+
+qywx = Qiyeweichat(
+    qywx_corpid=global_config.getRaw('messenger', 'qywx_corpid'),
+    qywx_agentId=global_config.getRaw('messenger', 'qywx_agentId'),
+    qywx_secret=global_config.getRaw('messenger', 'qywx_secret'),
+    qywx_touser=global_config.getRaw('messenger', 'qywx_touser')
 )
