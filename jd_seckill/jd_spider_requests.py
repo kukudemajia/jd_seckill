@@ -25,7 +25,9 @@ from .util import (
     save_image,
     open_image,
     add_bg_for_qr,
-    email
+    email,
+    qywx
+    
 
 )
 
@@ -479,6 +481,11 @@ class JdSeckill(object):
                     success_message = "预约成功，已获得抢购资格 / 您已成功预约过了，无需重复预约"
                     send_wechat(success_message)
                 break
+                if global_config.getRaw('messenger', 'qywx_enable') == 'true':
+                    success_message = "预约成功，已获得抢购资格 / 您已成功预约过了，无需重复预约"
+                    message_content = {"title":"京东茅台抢购","message":"text|"+success_message}
+                    qywx.send_message(message_content)
+                break
             except Exception as e:
                 logger.error('预约失败正在重试...')
 
@@ -707,9 +714,19 @@ class JdSeckill(object):
                 success_message = "抢购成功，订单号:{}, 总价:{}, 电脑端付款链接:{}".format(order_id, total_money, pay_url)
                 send_wechat(success_message)
             return True
+            if global_config.getRaw('messenger', 'qywx_enable') == 'true':
+                success_message = "抢购成功，订单号:{}, 总价:{}, 电脑端付款链接:{}".format(order_id, total_money, pay_url)
+                message_content = {"title":"京东茅台抢购","message":"text|"+success_message}
+                qywx.send_message(message_content)
+            return True
         else:
             logger.info('抢购失败，返回信息:{}'.format(resp_json))
             if global_config.getRaw('messenger', 'server_chan_enable') == 'true':
                 error_message = '抢购失败，返回信息:{}'.format(resp_json)
                 send_wechat(error_message)
             return False
+            if global_config.getRaw('messenger', 'qywx_enable') == 'true':
+                error_message = '抢购失败，返回信息:{}'.format(resp_json)
+                message_content = {"title":"京东茅台抢购","message":"text|"+error_message}
+                qywx.send_message(message_content)
+            return True
